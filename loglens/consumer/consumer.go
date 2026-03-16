@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"log"
 	"loglens/cluster"
-	"loglens/models"
-	"os"
-
 	"loglens/embeddings"
+	"loglens/models"
+	"net/http"
+	"os"
+	"sort"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
@@ -32,8 +33,12 @@ func main() {
 
 	consumer.SubscribeTopics([]string{"raw-logs"}, nil)
 	embedSvc := embeddings.New(apiKey)
+	redisStore := cluster.NewStore("localhost:6379")
 
-	engine := cluster.New(embedSvc, 0.8)
+	// Create the main engine.
+	engine := cluster.New(embedSvc, 0.8, redisStore)
+
+	go startHTTPServer(engine)
 
 	for {
 		// ReadMessage reads a single message from the consumer. The timeout parameter specifies how long to wait for a message.
@@ -66,4 +71,36 @@ func main() {
 			fmt.Printf("merged into cluster %s (count=%d)\n", cluster.ID, cluster.Count)
 		}
 	}
+}
+
+// HTTP Server to expose current clusters for visualization. In a real app, this would be a separate service.
+func startHTTPServer(engine *cluster.Engine) {
+	server := http.NewServeMux()
+
+	server.HandleFunc("GET /api/clusters/all", func(w http.ResponseWriter, r *http.Request) {
+
+		clusters := engine.All()
+
+		// sort by last seen so most recent errors appear first
+		sort.Slice(clusters, func(i, j int) bool {
+			return clusters[i].LastSeen.After(clusters[j].LastSeen)
+		})
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(clusters)
+	})
+
+	server.HandleFunc("POST /api/reset", func(w http.ResponseWriter, r *http.Request) {
+		if err := engine.Reset(context.Background()); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "clusters reset")
+	})
+
+	log.Println("consumer API running at http://localhost:4000")
+	http.ListenAndServe(":4000", server)
+
 }
