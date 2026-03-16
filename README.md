@@ -4,7 +4,7 @@ A real-time log deduplication and semantic clustering pipeline built on Kafka an
 
 ## Screenshot
 
-![LogLens Dashboard Screenshot](asset/screenshots/Screenshot%202026-03-15%20at%2011.15.25%20PM.png)
+![LogLens Dashboard Screenshot](asset/screenshots/dashboard.png)
 
 ## The Problem
 
