@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-
+	"loglens/cluster"
 	"loglens/models"
+	"os"
+
+	"loglens/embeddings"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
@@ -21,7 +25,15 @@ func main() {
 	}
 	defer consumer.Close()
 
+	apiKey := os.Getenv("VOYAGE_API_KEY")
+	if apiKey == "" {
+		log.Fatal("API KEY NOT FOUND")
+	}
+
 	consumer.SubscribeTopics([]string{"raw-logs"}, nil)
+	embedSvc := embeddings.New(apiKey)
+
+	engine := cluster.New(embedSvc, 0.8)
 
 	for {
 		// ReadMessage reads a single message from the consumer. The timeout parameter specifies how long to wait for a message.
@@ -42,12 +54,16 @@ func main() {
 			continue
 		}
 
-		// fmt.Println("Received:", event)
-		// fmt.Println("ID = ", event.ID)
-		fmt.Println("Service = ", event.Service)
-		// fmt.Println("Level = ", event.Level)
-		// fmt.Println("Message = ", event.Message)
-		// fmt.Println("Timestamp = ", event.Timestamp)
-		fmt.Println("Meta = ", event.Meta["host"], event.Meta["env"])
+		cluster, isNew, err := engine.Add(context.Background(), event)
+
+		if err != nil {
+			fmt.Printf("Error adding to cluster %s", err)
+			continue
+		}
+		if isNew {
+			fmt.Printf("NEW CLUSTER [%s] %s\n", event.Service, event.Message)
+		} else {
+			fmt.Printf("merged into cluster %s (count=%d)\n", cluster.ID, cluster.Count)
+		}
 	}
 }

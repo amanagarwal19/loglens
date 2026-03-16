@@ -76,7 +76,7 @@ func main() {
 		}, nil)
 
 		// producer.Flush(2000)
-		fmt.Printf("Message sent:[%s] - %s\n - %s", event.Service, event.Meta["host"], event.Meta["env"])
+		fmt.Printf("Message sent:[%s]\n", event.Message)
 		time.Sleep(5000 * time.Millisecond)
 	}
 
