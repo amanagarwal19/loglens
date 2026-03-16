@@ -2,6 +2,10 @@
 
 A real-time log deduplication and semantic clustering pipeline built on Kafka and Go, with a React dashboard.
 
+## Screenshot
+
+![LogLens Dashboard Screenshot](asset/screenshots/Screenshot%202026-03-15%20at%2011.15.25%20PM.png)
+
 ## The Problem
 
 When something breaks in production, your logging tool floods you with thousands of repeated or near-identical log lines. You waste time manually filtering noise instead of investigating what is actually new and unique. LogLens solves this by grouping semantically similar errors together in real time.
