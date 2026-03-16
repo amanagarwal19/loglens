@@ -3,11 +3,11 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"sync"
-	"time"
-
+	"log"
 	"loglens/embeddings"
 	"loglens/models"
+	"sync"
+	"time"
 )
 
 // Engine groups incoming log events into clusters based on semantic similarity.
@@ -16,13 +16,24 @@ type Engine struct {
 	clusters  []*models.Cluster
 	embedSvc  *embeddings.Service
 	threshold float32
+	store     *Store
 }
 
-func New(embedSvc *embeddings.Service, threshold float32) *Engine {
-	return &Engine{
+func New(embedSvc *embeddings.Service, threshold float32, store *Store) *Engine {
+	e := &Engine{
 		embedSvc:  embedSvc,
 		threshold: threshold,
+		store:     store,
 	}
+
+	clusters, err := e.store.LoadAll(context.Background())
+	if err != nil {
+		fmt.Printf("Error loading clusters from store: %v\n", err)
+	} else {
+		e.clusters = clusters
+		fmt.Printf("Loaded %d clusters from store\n", len(clusters))
+	}
+	return e
 }
 
 // rollingAvg shifts the centroid toward the new vector incrementally.
@@ -54,6 +65,7 @@ func (e *Engine) Add(ctx context.Context, event models.LogEvent) (*models.Cluste
 		best.Count++
 		best.LastSeen = event.Timestamp
 		best.Centroid = rollingAvg(best.Centroid, vec, best.Count)
+		e.store.Save(ctx, best) // Update cluster info from inmemory to redis store
 		return best, false, nil
 	}
 
@@ -67,6 +79,7 @@ func (e *Engine) Add(ctx context.Context, event models.LogEvent) (*models.Cluste
 		LastSeen:  event.Timestamp,
 	}
 	e.clusters = append(e.clusters, cluster)
+	e.store.Save(ctx, cluster) // Add new cluster from inmemory to redis store
 	return cluster, true, nil
 }
 
@@ -90,4 +103,18 @@ func (e *Engine) findNearest(vec embeddings.Vector) (*models.Cluster, float32) {
 		}
 	}
 	return best, bestSim
+}
+
+// Reset clears all clusters from memory and Redis.
+func (e *Engine) Reset(ctx context.Context) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if err := e.store.Reset(ctx); err != nil {
+		return fmt.Errorf("resetting store: %w", err)
+	}
+
+	e.clusters = nil
+	log.Println("all clusters reset")
+	return nil
 }
