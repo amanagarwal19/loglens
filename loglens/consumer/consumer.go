@@ -92,6 +92,7 @@ func startHTTPServer(engine *cluster.Engine) {
 	})
 
 	server.HandleFunc("POST /api/reset", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if err := engine.Reset(context.Background()); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

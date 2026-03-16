@@ -48,49 +48,64 @@ function ClusterCard({ cluster }) {
   )
 }
 
-function Header() {
+function Header({ setClusters }) {
   return (
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: '12px',
+      justifyContent: 'space-between',
       marginBottom: '32px',
       paddingBottom: '16px',
       borderBottom: '1px solid #e5e5e5',
-      direction: 'column',
     }}>
-
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '12px',
-        direction: 'row',
-      }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          background: '#f87171',
-          borderRadius: '10px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          direction: 'row',
-          flexShrink: 0
-        }}>
-          <Search size={20} color="#fff" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, justifyContent: 'center', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            background: '#f87171',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Search size={20} color="#fff" />
+          </div>
+          <h1 style={{ fontWeight: '500', color: '#111', margin: 24 }}>
+            LogLens
+          </h1>
         </div>
-        <h1 style={{ fontWeight: '500', color: '#111', margin: 20 }}>
-          LogLens
-        </h1>
+        <div>
+          <p style={{ fontSize: '18px', color: '#000000', margin: 0 }}>
+            Real-time log deduplication and semantic clustering
+          </p>
+        </div>
       </div>
-      <div>
-        <p style={{ color: '#000000', margin: 0 }}>
-          Real-time log deduplication and semantic clustering
-        </p>
-      </div>
+      <ResetClustersButton setClusters={setClusters} />
     </div>
+  )
+}
+
+function ResetClustersButton({ setClusters }) {
+  return (
+    <button
+      onClick={() => {
+        fetch('http://localhost:4000/api/reset', { method: 'POST' })
+          .then(() => setClusters([]))
+      }}
+      style={{
+        background: 'transparent',
+        color: '#f87171',
+        border: '1px solid #f87171',
+        padding: '6px 16px',
+        borderRadius: '6px',
+        cursor: 'pointer',
+        fontSize: '18px',
+      }}
+    >
+      Reset clusters
+    </button>
   )
 }
 
@@ -121,7 +136,8 @@ function App() {
 
   return (
     <div style={{ padding: '24px', minHeight: '100vh', color: '#000000' }}>
-      <Header />
+      <Header setClusters={setClusters} />
+
       <div style={{
         border: '1px solid #e5e5e5',
         borderRadius: '8px',
